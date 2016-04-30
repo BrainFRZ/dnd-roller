@@ -255,8 +255,8 @@ class RollerPanel extends JPanel {
                                                         .substring(7));
 
                 if (armiesBox.isVisible()) {
-                    decreaseArmy(warFields[MAIN_GROUP], partyValue);
-                    decreaseArmy(warFields[OPPOSING_GROUP], opposingValue);
+                    decreaseArmy(warFields[MAIN_GROUP], opposingValue);
+                    decreaseArmy(warFields[OPPOSING_GROUP], partyValue);
                 }
 
                 if (partyValue == opposingValue) {
