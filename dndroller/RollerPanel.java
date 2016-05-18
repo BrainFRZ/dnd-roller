@@ -26,11 +26,13 @@ class RollerPanel extends JPanel {
     private static final int MAIN_GROUP = 0, OPPOSING_GROUP = 1;
     private static final int NUM_DICE = 0, DIE_VALUE = 1;
 
-    private Box armiesBox;
+    private Box armiesBox, siegeBox, siegeOptionsBox;
     private JTextField[] rollFields;
     private JTextField[] warFields;
+    private JTextField[] siegeFields;
     private JTextArea outputArea;
-    private JRadioButton warMode, partyMode;
+    private JRadioButton warMode, partyMode, siegeMode;
+    private JRadioButton mainSiegeAttack, mainArmyAttack, opposingSiegeAttack, opposingArmyAttack;
     private JLabel[] groupLabels;
     private JButton rollButton, clearButton;
 
@@ -43,19 +45,25 @@ class RollerPanel extends JPanel {
         ButtonGroup modeGroup = new ButtonGroup();
         Box modeBox = Box.createHorizontalBox();
 
-        warMode = new JRadioButton("War Mode");
-        warMode.addActionListener(new ModeListener());
-        modeGroup.add(warMode);
-
         partyMode = new JRadioButton("Party Mode");
         partyMode.addActionListener(new ModeListener());
         partyMode.setSelected(true);
         modeGroup.add(partyMode);
 
+        warMode = new JRadioButton("War Mode");
+        warMode.addActionListener(new ModeListener());
+        modeGroup.add(warMode);
+
+        siegeMode = new JRadioButton("Siege Mode");
+        siegeMode.addActionListener(new ModeListener());
+        modeGroup.add(siegeMode);
+
         modeBox.add(Box.createHorizontalGlue());
         modeBox.add(partyMode);
         modeBox.add(Box.createHorizontalGlue());
         modeBox.add(warMode);
+        modeBox.add(Box.createHorizontalGlue());
+        modeBox.add(siegeMode);
         modeBox.add(Box.createHorizontalGlue());
 
         topPanel.add(modeBox);
@@ -111,7 +119,64 @@ class RollerPanel extends JPanel {
         armiesBox.add(Box.createHorizontalGlue());
 
         armiesBox.setVisible(false);
+
+
+        siegeBox = Box.createHorizontalBox();
+
+        siegeFields = new JTextField[2];
+        siegeFields[MAIN_GROUP] = new JTextField(5);
+        siegeFields[MAIN_GROUP].setName("Main Army");
+        siegeFields[MAIN_GROUP].setMaximumSize(BOX_DIMENSION);
+        siegeFields[MAIN_GROUP].setFont(INPUT_FONT);
+        siegeFields[OPPOSING_GROUP] = new JTextField(5);
+        siegeFields[OPPOSING_GROUP].setName("Opposing Army");
+        siegeFields[OPPOSING_GROUP].setMaximumSize(BOX_DIMENSION);
+        siegeFields[OPPOSING_GROUP].setFont(INPUT_FONT);
+
+        siegeBox.add(Box.createHorizontalGlue());
+        siegeBox.add(new JLabel("Main Army Defense"));
+        siegeBox.add(Box.createHorizontalStrut(5));
+        siegeBox.add(siegeFields[MAIN_GROUP]);
+        siegeBox.add(Box.createHorizontalStrut(20));
+        siegeBox.add(new JLabel("Opposing Army Defense"));
+        siegeBox.add(Box.createHorizontalStrut(5));
+        siegeBox.add(siegeFields[OPPOSING_GROUP]);
+        siegeBox.add(Box.createHorizontalGlue());
+        siegeBox.setVisible(false);
+
+        siegeOptionsBox = Box.createHorizontalBox();
+        ButtonGroup mainAttackGroup = new ButtonGroup();
+        ButtonGroup opposingAttackGroup = new ButtonGroup();
+
+        mainArmyAttack  = new JRadioButton("Attack");
+        mainSiegeAttack = new JRadioButton("Siege");
+        mainAttackGroup.add(mainArmyAttack);
+        mainAttackGroup.add(mainSiegeAttack);
+        mainArmyAttack.setSelected(true);
+
+        opposingArmyAttack  = new JRadioButton("Attack");
+        opposingSiegeAttack = new JRadioButton("Siege");
+        opposingArmyAttack.setSelected(true);
+        opposingAttackGroup.add(opposingArmyAttack);
+        opposingAttackGroup.add(opposingSiegeAttack);
+        opposingArmyAttack.setSelected(true);
+
+        siegeOptionsBox.add(Box.createHorizontalGlue());
+        siegeOptionsBox.add(Box.createHorizontalGlue());
+        siegeOptionsBox.add(mainArmyAttack);
+        siegeOptionsBox.add(Box.createHorizontalStrut(20));
+        siegeOptionsBox.add(mainSiegeAttack);
+        siegeOptionsBox.add(Box.createHorizontalGlue());
+        siegeOptionsBox.add(opposingArmyAttack);
+        siegeOptionsBox.add(Box.createHorizontalStrut(20));
+        siegeOptionsBox.add(opposingSiegeAttack);
+        siegeOptionsBox.add(Box.createHorizontalGlue());
+        siegeOptionsBox.add(Box.createHorizontalGlue());
+        siegeOptionsBox.setVisible(false);
+
         topPanel.add(armiesBox);
+        topPanel.add(siegeBox);
+        topPanel.add(siegeOptionsBox);
 
         add(topPanel, BorderLayout.NORTH);
 
@@ -164,16 +229,26 @@ class RollerPanel extends JPanel {
         return rollButton;
     }
 
-    private void decreaseArmy(JTextField armyField, int decreaseBy) {
+    private void decreaseArmy(JTextField armyField, int defense, int decreaseBy) {
         int armySize = -1;
 
         try {
             armySize = Integer.parseInt(armyField.getText());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(armyField, armyField.getText() + " isn't a valid army size.");
+            String fieldText = armyField.getText();
+            if (fieldText.isEmpty()) {
+                JOptionPane.showMessageDialog(armyField, "Please enter an army size");
+            } else if (!fieldText.equals("DEAD")) {
+                JOptionPane.showMessageDialog(armyField, armyField.getText()
+                                                            + " isn't a valid army size.");
+            }
         }
 
         if (armySize > 0) {
+            decreaseBy -= defense;
+            if (decreaseBy < 0) {
+                decreaseBy = 0;
+            }
             if (armySize <= decreaseBy) {
                 armyField.setText("DEAD");
                 JOptionPane.showMessageDialog(armyField, armyField.getName() + " has been destroyed!",
@@ -184,13 +259,43 @@ class RollerPanel extends JPanel {
         }
     }
 
+    private void decreaseDefense(JTextField siegeField, int decreaseBy) {
+        int defense = -1;
+
+        try {
+            defense = Integer.parseInt(siegeField.getText());
+        } catch (NumberFormatException e) {
+            String fieldText = siegeField.getText();
+            if (fieldText.isEmpty()) {
+                JOptionPane.showMessageDialog(siegeField, "Please enter the army's defense");
+            } else if (!fieldText.equals("DESTROYED")) {
+                JOptionPane.showMessageDialog(siegeField, siegeField.getText()
+                                                            + " isn't a valid army defense.");
+            }
+        }
+
+        if (defense > 0) {
+            if (defense <= decreaseBy) {
+                siegeField.setText("DESTROYED");
+                JOptionPane.showMessageDialog(siegeField,
+                                                siegeField.getName() + "'s defense has been destroyed!",
+                                                "Defense destroyed", JOptionPane.PLAIN_MESSAGE);
+            } else {
+                siegeField.setText(Integer.toString(defense - decreaseBy));
+            }
+        }
+    }
+
     private void clearOutput() {
         outputArea.setText("");
 
-        if (armiesBox.isVisible()) {
-            warFields[MAIN_GROUP].setText("");
-            warFields[OPPOSING_GROUP].setText("");
-        }
+        warFields[MAIN_GROUP].setText("");
+        warFields[OPPOSING_GROUP].setText("");
+
+        siegeFields[MAIN_GROUP].setText("");
+        siegeFields[OPPOSING_GROUP].setText("");
+        mainArmyAttack.setSelected(true);
+        opposingArmyAttack.setSelected(true);
     }
 
     private class ButtonListener implements ActionListener {
@@ -204,7 +309,7 @@ class RollerPanel extends JPanel {
             } else if (source == clearButton) {
                 clearOutput();
             } else {
-                throw new UnsupportedOperationException("Unsupported button: " + source);
+                throw new UnsupportedOperationException("Unsupported button was pressed");
             }
         }
 
@@ -229,7 +334,12 @@ class RollerPanel extends JPanel {
                 }
             }
 
-            int maxLines = (resultLines.length == 1 || resultLines[0].length > resultLines[1].length)
+            if (resultLines[MAIN_GROUP] == null) {
+                return;
+            }
+
+            int maxLines = (resultLines.length == 1 || resultLines[0].length > resultLines[1].length
+                                                    || resultLines[OPPOSING_GROUP] == null)
                                 ? resultLines[MAIN_GROUP].length : resultLines[OPPOSING_GROUP].length;
 
             for (int lineNum = 0; lineNum < maxLines - 1; lineNum++) {
@@ -254,9 +364,12 @@ class RollerPanel extends JPanel {
                 int opposingValue = Integer.parseInt(resultLines[OPPOSING_GROUP][resultLines[OPPOSING_GROUP].length - 1]
                                                         .substring(7));
 
-                if (armiesBox.isVisible()) {
-                    decreaseArmy(warFields[MAIN_GROUP], opposingValue);
-                    decreaseArmy(warFields[OPPOSING_GROUP], partyValue);
+                if (warMode.isSelected()) {
+                    decreaseArmy(warFields[MAIN_GROUP], 0, opposingValue);
+                    decreaseArmy(warFields[OPPOSING_GROUP], 0, partyValue);
+                } else if (siegeMode.isSelected()) {
+                    performSiege(mainArmyAttack.isSelected(), opposingArmyAttack.isSelected(),
+                            opposingValue, partyValue);
                 }
 
                 if (partyValue == opposingValue) {
@@ -275,10 +388,60 @@ class RollerPanel extends JPanel {
     }
 
     private String armyOrParty() {
-        if (warMode.isSelected()) {
+        if (warMode.isSelected() || siegeMode.isSelected()) {
             return "army";
         } else {
             return "party";
+        }
+    }
+
+    private void performSiege(boolean mainAttacks, boolean opposingAttacks, int partyValue,
+                                    int opposingValue)
+    {
+        if (mainAttacks) {
+            int defense = 0;
+            String defenseStr;
+            do {
+                defenseStr = siegeFields[OPPOSING_GROUP].getText();
+                try {
+                    defense = Integer.parseInt(defenseStr);
+                } catch (NumberFormatException e) {
+                    if (defenseStr.isEmpty()) {
+                        JOptionPane.showMessageDialog(siegeFields[OPPOSING_GROUP],
+                                                        "Please enter the army's defense");
+                    } else if (!defenseStr.equals("DESTROYED")) {
+                        JOptionPane.showMessageDialog(siegeFields[OPPOSING_GROUP], defenseStr
+                                                                    + " isn't a valid army defense.");
+                    }
+                }
+            } while (defense < 0 && !defenseStr.equals("DESTROYED"));
+
+            decreaseArmy(warFields[OPPOSING_GROUP], defense, opposingValue);
+        } else {
+            decreaseDefense(siegeFields[OPPOSING_GROUP], opposingValue);
+        }
+
+        if (opposingAttacks) {
+            int defense = -1;
+            String defenseStr;
+            do {
+                defenseStr = siegeFields[MAIN_GROUP].getText();
+                try {
+                    defense = Integer.parseInt(defenseStr);
+                } catch (NumberFormatException e) {
+                    if (defenseStr.isEmpty()) {
+                        JOptionPane.showMessageDialog(siegeFields[MAIN_GROUP],
+                                                        "Please enter the army's defense");
+                    } else if (!defenseStr.equals("DESTROYED")) {
+                        JOptionPane.showMessageDialog(siegeFields[MAIN_GROUP], defenseStr
+                                                                    + " isn't a valid army defense.");
+                    }
+                }
+            } while (defense < 0 && !defenseStr.equals("DESTROYED"));
+
+            decreaseArmy(warFields[MAIN_GROUP], defense, partyValue);
+        } else {
+            decreaseDefense(siegeFields[MAIN_GROUP], partyValue);
         }
     }
 
@@ -288,16 +451,24 @@ class RollerPanel extends JPanel {
         public void actionPerformed(ActionEvent e) {
             Object source = e.getSource();
 
-            if (source == warMode && !armiesBox.isVisible()) {
+            if (source == warMode && (!armiesBox.isVisible() || siegeBox.isVisible())) {
                 armiesBox.setVisible(true);
+                siegeBox.setVisible(false);
+                siegeOptionsBox.setVisible(false);
                 groupLabels[MAIN_GROUP].setText("Main Army");
                 groupLabels[OPPOSING_GROUP].setText("Opposing Army");
-                clearOutput();
             } else if (source == partyMode && armiesBox.isVisible()) {
                 armiesBox.setVisible(false);
+                siegeBox.setVisible(false);
+                siegeOptionsBox.setVisible(false);
                 groupLabels[MAIN_GROUP].setText("Main Party");
                 groupLabels[OPPOSING_GROUP].setText("Opposing Party");
-                clearOutput();
+            } else if (source == siegeMode && !siegeBox.isVisible()) {
+                armiesBox.setVisible(true);
+                siegeBox.setVisible(true);
+                siegeOptionsBox.setVisible(true);
+                groupLabels[MAIN_GROUP].setText("Main Army");
+                groupLabels[OPPOSING_GROUP].setText("Opposing Army");
             }
         }
 
